@@ -3,6 +3,7 @@ const { Pool } = require("pg");
 const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
+const bcrypt = require("bcrypt"); // Añadido para el Login
 require("dotenv").config();
 
 const app = express();
@@ -12,7 +13,6 @@ app.use(cors());
 app.use(express.json());
 
 // --- 2. ACCESO PÚBLICO A ARCHIVOS ---
-// Permite acceder a los PDFs desde el navegador (http://localhost:3000/uploads/...)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- 3. CONFIGURACIÓN DE POSTGRESQL ---
@@ -45,6 +45,32 @@ const upload = multer({
   },
 });
 
+// --- NUEVO: RUTA DE LOGIN (Para validar a Juanito Alimaña) ---
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM usuarios WHERE email = $1", [
+      email,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
+    const usuario = result.rows[0];
+    const passwordValida = await bcrypt.compare(password, usuario.password);
+    if (!passwordValida) {
+      return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
+    res.json({
+      id: usuario.id,
+      nombre: usuario.nombre,
+      email: usuario.email,
+      rol: usuario.rol,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Error en el servidor" });
+  }
+});
+
 // --- 5. RUTAS DE RECLUTAMIENTO (GESTIÓN DE TALENTO) ---
 
 // POST: Recibir postulación
@@ -68,7 +94,7 @@ app.post("/api/postular", upload.single("archivoPdf"), async (req, res) => {
 app.get("/api/postulantes", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM postulantes ORDER BY fecha DESC",
+      "SELECT * FROM postulantes ORDER BY id DESC", // Cambié 'fecha' por 'id' para evitar error si no existe columna fecha
     );
     res.json(result.rows);
   } catch (err) {
@@ -124,6 +150,30 @@ app.put("/api/productos/:id", async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: "Error al actualizar precio" });
+  }
+});
+
+// --- RUTA DE REGISTRO CORREGIDA ---
+app.post("/api/registro", async (req, res) => {
+  const { nombre, email, password } = req.body;
+
+  try {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // EL CAMBIO ESTÁ AQUÍ: Agregamos el $4 para el rol
+    const result = await pool.query(
+      "INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol",
+      [nombre, email, hashedPassword, "postulante"], // <--- Aquí hay 4 valores
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error en registro:", err.message);
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "Este correo ya está registrado" });
+    }
+    res.status(500).json({ error: "Error al crear la cuenta" });
   }
 });
 
