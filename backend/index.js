@@ -115,17 +115,41 @@ app.post("/api/login", async (req, res) => {
 // --- 5. RUTAS DE RECLUTAMIENTO (POSTULANTES) ---
 
 app.post("/api/postular", uploadCV.single("archivoPdf"), async (req, res) => {
-  const { nombre, edad, estudio, experiencia, telefono } = req.body;
+  const { nombre, edad, estudio, experiencia, telefono, usuario_id } = req.body;
   const hoja_de_vida_url = req.file ? req.file.path : null;
 
   try {
-    const result = await pool.query(
-      "INSERT INTO postulantes (nombre, edad, estudio, experiencia, hoja_de_vida_url, telefono, estado) VALUES ($1, $2, $3, $4, $5, $6, 'Pendiente') RETURNING *",
-      [nombre, edad, estudio, experiencia, hoja_de_vida_url, telefono],
-    );
-    res.json({ message: "¡Postulación enviada!", postulante: result.rows[0] });
+    const query = `
+      INSERT INTO postulantes (usuario_id, nombre, edad, estudio, experiencia, telefono, hoja_de_vida_url, estado)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pendiente')
+      ON CONFLICT (usuario_id) 
+      DO UPDATE SET 
+        nombre = EXCLUDED.nombre,
+        edad = EXCLUDED.edad,
+        estudio = EXCLUDED.estudio,
+        experiencia = EXCLUDED.experiencia,
+        telefono = EXCLUDED.telefono,
+        hoja_de_vida_url = COALESCE(EXCLUDED.hoja_de_vida_url, postulantes.hoja_de_vida_url),
+        estado = 'Pendiente'
+      RETURNING *;
+    `;
+
+    const result = await pool.query(query, [
+      usuario_id,
+      nombre,
+      edad,
+      estudio,
+      experiencia,
+      telefono,
+      hoja_de_vida_url,
+    ]);
+
+    res.json({
+      message: "¡CV recibido con éxito!",
+      postulante: result.rows[0],
+    });
   } catch (err) {
-    console.error("Error al postular:", err.message);
+    console.error("Error:", err.message);
     res.status(500).json({ error: "Error al procesar la postulación" });
   }
 });
@@ -305,40 +329,51 @@ app.put("/api/productos/:id", async (req, res) => {
 });
 
 // --- RUTA DE REGISTRO ---
+// --- RUTA DE REGISTRO MEJORADA ---
 app.post("/api/registro", async (req, res) => {
   const { nombre, email, password, rol } = req.body;
+  const client = await pool.connect();
+
   try {
+    await client.query("BEGIN"); // Inicia transacción
+
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const rolFinal = rol || "postulante";
 
-    const resultUsuario = await pool.query(
+    // 1. Crear el usuario en la tabla 'usuarios'
+    const resultUsuario = await client.query(
       "INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol",
       [nombre, email, hashedPassword, rolFinal],
     );
 
     const nuevoUsuario = resultUsuario.rows[0];
-    const nuevoId = nuevoUsuario.id;
 
+    // 2. Crear el perfil inicial (sin PDF ni Edad por ahora)
     if (rolFinal === "postulante") {
-      await pool.query(
+      await client.query(
         "INSERT INTO postulantes (nombre, usuario_id, estado) VALUES ($1, $2, $3)",
-        [nombre, nuevoId, "Pendiente"],
+        [nombre, nuevoUsuario.id, "Pendiente"],
       );
     } else if (rolFinal === "proveedor") {
-      await pool.query(
+      await client.query(
         "INSERT INTO proveedores (usuario_id, nombre_empresa) VALUES ($1, $2)",
-        [nuevoId, nombre],
+        [nuevoUsuario.id, nombre],
       );
     }
 
+    await client.query("COMMIT"); // Guarda todo si no hubo errores
     res.status(201).json(nuevoUsuario);
   } catch (err) {
+    await client.query("ROLLBACK"); // Si algo falló, deshace todo (limpieza automática)
     console.error("Error en registro:", err.message);
+
     if (err.code === "23505") {
       return res.status(400).json({ error: "Este correo ya está registrado" });
     }
     res.status(500).json({ error: "Error al crear la cuenta" });
+  } finally {
+    client.release(); // Cierra la conexión
   }
 });
 
