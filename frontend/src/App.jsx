@@ -7,6 +7,7 @@ import { Admin } from "./pages/Admin";
 import { Catalogo } from "./pages/Catalogo";
 import { Trabajo } from "./pages/Trabajo";
 import { Proveedores } from "./pages/Proveedores"; // Nueva página para empresas
+import { TodasLasSedes } from "./components/TodasLasSedes";
 
 // Componente para resetear el scroll al cambiar de página
 const ScrollToTop = () => {
@@ -26,6 +27,7 @@ function App() {
         {/* --- RUTAS PÚBLICAS --- */}
         <Route path="/" element={<Home />} />
         <Route path="/productos" element={<Catalogo />} />
+        <Route path="/todas-las-sedes" element={<TodasLasSedes />} />
 
         {/* --- PORTAL DE POSTULANTES (TRABAJO) --- */}
         <Route path="/unetes" element={<Trabajo />} />

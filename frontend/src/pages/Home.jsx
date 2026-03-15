@@ -12,35 +12,41 @@ import { Footer } from "../components/Footer";
 
 export const Home = () => {
   const [productos, setProductos] = useState([]);
+  // --- NUEVO: Estado para categorías ---
+  const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(true);
   const { hash } = useLocation();
 
-  // 1. Cargar productos
+  // 1. Cargar productos y categorías
   useEffect(() => {
-    const obtenerProductos = async () => {
+    const obtenerDatos = async () => {
       try {
-        const respuesta = await api.get("/api/productos");
-        setProductos(respuesta.data);
+        // Hacemos ambas peticiones al mismo tiempo
+        const [resProductos, resCategorias] = await Promise.all([
+          api.get("/api/productos"),
+          api.get("/api/productos/categorias"), // Asegúrate que esta ruta sea la correcta en tu backend
+        ]);
+
+        setProductos(resProductos.data);
+        setCategorias(resCategorias.data); // Guardamos las categorías con su campo 'es_prioridad'
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Error al cargar datos:", error);
       } finally {
         setCargando(false);
       }
     };
-    obtenerProductos();
+    obtenerDatos();
   }, []);
 
   // 2. SCROLL MANUAL DE ALTA PRECISIÓN
   useEffect(() => {
-    // Solo actuamos si hay un hash (#locales, #nosotros, etc.)
     if (hash) {
       const ejecutarScroll = () => {
         const id = hash.replace("#", "");
         const elemento = document.getElementById(id);
 
         if (elemento) {
-          // Usamos getBoundingClientRect para calcular la posición real
-          const yOffset = -100; // Espacio para la Navbar
+          const yOffset = -100;
           const y =
             elemento.getBoundingClientRect().top + window.pageYOffset + yOffset;
 
@@ -48,14 +54,12 @@ export const Home = () => {
         }
       };
 
-      // Si terminó de cargar, ejecutamos. Si no, esperamos.
       if (!cargando) {
-        // Un pequeño delay para que el navegador "dibuje" los productos antes de saltar
         const timer = setTimeout(ejecutarScroll, 100);
         return () => clearTimeout(timer);
       }
     }
-  }, [hash, cargando]); // Se dispara al cambiar el hash O al terminar de cargar
+  }, [hash, cargando]);
 
   return (
     <div
@@ -66,7 +70,12 @@ export const Home = () => {
       <Hero />
       <Features />
       <Nosotros />
-      <ProductShowcase productos={productos} cargando={cargando} />
+      {/* Ahora 'categorias' ya existe y tiene datos */}
+      <ProductShowcase
+        productos={productos}
+        categorias={categorias}
+        cargando={cargando}
+      />
       <Sedes />
       <Footer />
     </div>

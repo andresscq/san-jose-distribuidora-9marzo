@@ -5,6 +5,8 @@ const multer = require("multer");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const fs = require("fs");
+const productosRoutes = require("./routes/productos");
+const sedesRoutes = require("./routes/sedes"); // 1. IMPORTA LAS RUTAS DE SEDES
 require("dotenv").config();
 
 const app = express();
@@ -12,18 +14,15 @@ const app = express();
 // --- 1. CONFIGURACIÓN DE MIDDLEWARES ---
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/api/productos", productosRoutes);
+app.use("/api/sedes", sedesRoutes);
 
 // --- 2. ACCESO PÚBLICO A ARCHIVOS ---
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- 3. CONFIGURACIÓN DE POSTGRESQL ---
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+const pool = require("./db");
 
 // --- NUEVO: MIDDLEWARE DE SEGURIDAD PARA ADMIN ---
 const esAdmin = (req, res, next) => {
@@ -305,26 +304,50 @@ app.post(
 
 // --- 7. RUTAS DE PRODUCTOS ---
 
+// 1. OBTENER PRODUCTOS (Con el nombre de la categoría incluido)
 app.get("/api/productos", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM productos ORDER BY id ASC");
+    const query = `
+      SELECT p.*, c.nombre AS nombre_categoria 
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      ORDER BY p.id ASC
+    `;
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener productos" });
   }
 });
 
+// 2. ACTUALIZAR PRODUCTO (Para que guarde stock, descripción, etc.)
 app.put("/api/productos/:id", async (req, res) => {
   const { id } = req.params;
-  const { precio_unidad } = req.body;
+  const { nombre, descripcion, stock, stock_alerta, categoria_id } = req.body;
+
   try {
-    const result = await pool.query(
-      "UPDATE productos SET precio_unidad = $1 WHERE id = $2 RETURNING *",
-      [precio_unidad, id],
-    );
+    const query = `
+      UPDATE productos 
+      SET nombre = $1, 
+          descripcion = $2, 
+          stock = $3, 
+          stock_alerta = $4, 
+          categoria_id = $5 
+      WHERE id = $6 
+      RETURNING *
+    `;
+    const values = [nombre, descripcion, stock, stock_alerta, categoria_id, id];
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: "Error al actualizar precio" });
+    console.error(err);
+    res.status(500).json({ error: "Error al actualizar el producto" });
   }
 });
 

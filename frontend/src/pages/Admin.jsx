@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Navbar } from "../components/Navbar";
 import { SeccionPostulantes } from "../components/SeccionPostulantes";
-import { SeccionProveedores } from "../components/SeccionProveedores"; // ✅ Importación vital
+import { SeccionProveedores } from "../components/SeccionProveedores";
+import AdminProductos from "../components/AdminProductos";
+import { AdminSedes } from "../components/AdminSedes"; // ✅ Importación correcta
 
 export const Admin = () => {
-  // Estado para controlar qué sección vemos
   const [pestana, setPestana] = useState("productos");
 
   return (
@@ -36,6 +37,17 @@ export const Admin = () => {
           </button>
 
           <button
+            onClick={() => setPestana("sedes")}
+            className={`px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all duration-300 ${
+              pestana === "sedes"
+                ? "bg-green-900 text-white shadow-xl scale-105"
+                : "text-slate-400 hover:bg-slate-50 hover:text-green-900"
+            }`}
+          >
+            📍 Sedes / Locales
+          </button>
+
+          <button
             onClick={() => setPestana("postulantes")}
             className={`px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all duration-300 ${
               pestana === "postulantes"
@@ -60,25 +72,33 @@ export const Admin = () => {
 
         {/* ÁREA DE CONTENIDO DINÁMICO */}
         <div className="transition-all duration-500 min-h-[400px]">
-          {/* SECCIÓN 1: PRODUCTOS */}
+          {/* 1. PRODUCTOS */}
           {pestana === "productos" && (
-            <div className="bg-white p-10 rounded-[45px] shadow-sm border border-slate-100 animate-fadeIn text-center">
-              <h3 className="text-2xl font-black text-green-900 uppercase italic mb-4">
-                Control de <span className="text-yellow-500">Precios</span>
-              </h3>
-              <div className="border-2 border-dashed border-slate-100 rounded-3xl p-20">
-                <p className="text-slate-300 font-bold uppercase text-xs tracking-widest">
-                  Módulo de inventario en desarrollo
-                </p>
-              </div>
+            <div className="animate-fadeIn">
+              <AdminProductos />
             </div>
           )}
 
-          {/* SECCIÓN 2: RRHH */}
-          {pestana === "postulantes" && <SeccionPostulantes />}
+          {/* 2. SEDES (Panel de Gestión) */}
+          {pestana === "sedes" && (
+            <div className="animate-fadeIn">
+              <AdminSedes />
+            </div>
+          )}
 
-          {/* SECCIÓN 3: PROVEEDORES */}
-          {pestana === "proveedores" && <SeccionProveedores />}
+          {/* 3. POSTULANTES */}
+          {pestana === "postulantes" && (
+            <div className="animate-fadeIn">
+              <SeccionPostulantes />
+            </div>
+          )}
+
+          {/* 4. PROVEEDORES */}
+          {pestana === "proveedores" && (
+            <div className="animate-fadeIn">
+              <SeccionProveedores />
+            </div>
+          )}
         </div>
       </div>
     </div>
