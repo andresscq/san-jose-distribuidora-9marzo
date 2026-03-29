@@ -52,30 +52,25 @@ export const AuthPostulante = ({ alEntrar }) => {
     e.preventDefault();
     setError("");
 
-    // 1. Limpieza de datos (Quitar espacios accidentales)
     const emailLimpio = datos.email.trim();
-
-    // 2. REGEX ESTRICTO: usuario @ dominio . extension (min 2 letras)
-    // No permite: usuario@dominio ni usuario.com (sin @)
     const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!regexEmail.test(emailLimpio)) {
       return setError("El correo debe ser válido (ejemplo@dominio.com)");
     }
 
-    // 3. Validaciones adicionales de Registro
     if (esRegistro) {
       if (!datos.nombre.trim()) return setError("El nombre es obligatorio");
-      if (datos.password.length < 9)
-        return setError("Mínimo 9 caracteres en contraseña");
+      if (datos.password.length < 9) return setError("Mínimo 9 caracteres");
       if (datos.password !== datos.confirmarPassword)
         return setError("Las contraseñas no coinciden");
-    } else {
-      if (!datos.password) return setError("Ingresa tu contraseña");
     }
 
     setCargando(true);
     try {
+      // 1. LIMPIEZA PREVENTIVA: Borramos cualquier rastro antes de intentar nada
+      localStorage.clear();
+
       const payload = {
         email: emailLimpio,
         password: datos.password,
@@ -87,9 +82,25 @@ export const AuthPostulante = ({ alEntrar }) => {
       const endpoint = esRegistro ? "/api/registro" : "/api/login";
       const res = await api.post(endpoint, payload);
 
-      // Guardar sesión y entrar
-      localStorage.setItem("usuario_distribuidora", JSON.stringify(res.data));
-      alEntrar();
+      if (esRegistro) {
+        // FLUJO REGISTRO: Limpiamos y forzamos Login manual
+        alert(
+          "¡Registro exitoso! Por seguridad, ingresa tus datos para iniciar sesión.",
+        );
+        setEsRegistro(false);
+        setDatos({
+          nombre: "",
+          email: "",
+          password: "",
+          confirmarPassword: "",
+        });
+      } else {
+        // FLUJO LOGIN: Guardamos la data fresca del servidor
+        localStorage.setItem("usuario_distribuidora", JSON.stringify(res.data));
+
+        // Ejecutamos la función de entrada (redirigir al Dashboard)
+        alEntrar();
+      }
     } catch (err) {
       setError(
         err.response?.data?.error || "Error de conexión con el servidor",
@@ -174,7 +185,6 @@ export const AuthPostulante = ({ alEntrar }) => {
                   <IconoOjo abierto={verPass} />
                 </button>
               </div>
-
               {esRegistro && (
                 <div className="mt-4 px-2">
                   <div className="flex justify-between items-center mb-1">

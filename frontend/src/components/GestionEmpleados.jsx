@@ -131,12 +131,12 @@ export const GestionEmpleados = () => {
         {/* HEADER: Estilo minimalista con sombra suave */}
         <header className="mb-10 flex flex-col lg:flex-row justify-between items-center gap-6 bg-white p-6 md:p-8 rounded-[35px] shadow-sm border border-slate-100">
           <div className="flex items-center gap-4">
-            <div className="p-4 bg-green-600 rounded-3xl shadow-lg shadow-green-100 rotate-3">
+            <div className="p-4 bg-green-900 rounded-3xl shadow-lg shadow-green-100 rotate-3">
               <LayoutGrid className="text-white" size={28} />
             </div>
             <div>
               <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                Gestión <span className="text-green-600 italic">Asesores</span>
+                Gestión <span className="text-yellow-500 italic">Asesores</span>
               </h1>
               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-1">
                 Distribuidora San José • Administración
@@ -146,7 +146,7 @@ export const GestionEmpleados = () => {
 
           <div className="flex flex-wrap justify-center items-center gap-4 bg-slate-50 p-3 rounded-[30px] border border-slate-100">
             <div className="flex items-center gap-3 px-4">
-              <Clock className="text-slate-400" size={18} />
+              <Clock className="text-slate-400" size={19} />
               <div className="flex items-center gap-2">
                 <input
                   type="time"
@@ -156,7 +156,7 @@ export const GestionEmpleados = () => {
                     setConfig({ ...config, hora_apertura: e.target.value })
                   }
                 />
-                <ArrowRight size={14} className="text-slate-300" />
+                <ArrowRight size={14} className="text-green-900" />
                 <input
                   type="time"
                   className="bg-white border border-slate-200 rounded-xl p-2 text-xs font-black text-slate-700 outline-none focus:ring-2 ring-green-500/20"

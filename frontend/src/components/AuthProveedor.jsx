@@ -28,6 +28,7 @@ const IconoOjo = ({ abierto }) => (
 
 export const AuthProveedor = ({ alEntrar }) => {
   const [esRegistro, setEsRegistro] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState("");
   const [datos, setDatos] = useState({
     nombre: "",
     email: "",
@@ -39,7 +40,6 @@ export const AuthProveedor = ({ alEntrar }) => {
   const [verPass, setVerPass] = useState(false);
   const [verConfirm, setVerConfirm] = useState(false);
 
-  // Lógica de la barra de progreso
   const calcularProgreso = () => {
     const largo = datos.password.length;
     if (largo === 0) return 0;
@@ -52,12 +52,13 @@ export const AuthProveedor = ({ alEntrar }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMensajeExito("");
 
     const emailLimpio = datos.email.trim().toLowerCase();
     const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!regexEmail.test(emailLimpio)) {
-      return setError("Correo corporativo inválido (ej: ventas@empresa.com)");
+      return setError("Correo corporativo inválido");
     }
 
     if (esRegistro) {
@@ -82,8 +83,24 @@ export const AuthProveedor = ({ alEntrar }) => {
         esRegistro ? "/api/registro" : "/api/login",
         payload,
       );
-      localStorage.setItem("usuario_distribuidora", JSON.stringify(res.data));
-      alEntrar();
+
+      if (esRegistro) {
+        // --- FLUJO DE REGISTRO EXITOSO ---
+        setMensajeExito(
+          "¡Cuenta corporativa creada! Ya puedes iniciar sesión.",
+        );
+        setEsRegistro(false); // Cambia a vista de Login
+        setDatos({
+          nombre: "",
+          email: emailLimpio,
+          password: "",
+          confirmarPassword: "",
+        });
+      } else {
+        // --- FLUJO DE LOGIN EXITOSO ---
+        localStorage.setItem("usuario_distribuidora", JSON.stringify(res.data));
+        alEntrar();
+      }
     } catch (err) {
       setError(err.response?.data?.error || "Error de acceso");
     } finally {
@@ -106,6 +123,12 @@ export const AuthProveedor = ({ alEntrar }) => {
         {error && (
           <div className="bg-red-600 text-white p-4 rounded-2xl mb-6 text-[11px] font-black uppercase text-center italic animate-bounce">
             ⚠️ {error}
+          </div>
+        )}
+
+        {mensajeExito && (
+          <div className="bg-green-100 text-green-700 border-2 border-green-200 p-4 rounded-2xl mb-6 text-[11px] font-black uppercase text-center italic animate-fade-in">
+            ✅ {mensajeExito}
           </div>
         )}
 
@@ -166,7 +189,6 @@ export const AuthProveedor = ({ alEntrar }) => {
                 </button>
               </div>
 
-              {/* BARRA DE PROGRESO IDÉNTICA */}
               {esRegistro && (
                 <div className="mt-4 px-2">
                   <div className="flex justify-between items-center mb-1">
@@ -235,6 +257,7 @@ export const AuthProveedor = ({ alEntrar }) => {
             onClick={() => {
               setEsRegistro(!esRegistro);
               setError("");
+              setMensajeExito("");
             }}
             className="text-[12px] font-black uppercase text-green-900 hover:text-yellow-600 transition-all italic"
           >
